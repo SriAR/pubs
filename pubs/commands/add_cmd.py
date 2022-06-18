@@ -157,7 +157,6 @@ def command(conf, args):
         doc_add = conf['main']['doc_add']
 
     rp.push_paper(p)
-    ui.message('added to pubs:\n{}'.format(pretty.paper_oneliner(p, max_authors=conf['main']['max_authors'])))
     if docfile is not None:
         rp.push_doc_paper(p, docfile, copy=(doc_add in ('copy', 'move')))
 
@@ -166,8 +165,5 @@ def command(conf, args):
                 content.remove_file(docfile)
 
             docpath = content.system_path(rp.databroker.real_docpath(p.docpath))
-            verb = 'moved' if doc_add == 'move' else 'copied'
-            ui.message('{} was {} to {} inside the pubs repository.'.format(color.dye_out(docfile, 'filepath'), verb,
-                                                                            color.dye_out(docpath, 'filepath')))
 
     rp.close()
