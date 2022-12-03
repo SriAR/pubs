@@ -83,9 +83,8 @@ class CommandTestCase(fake_env.TestFakeFs):
 
     maxDiff = 1000000
 
-    def setUp(self, nsec_stat=True):
+    def setUp(self):
         super(CommandTestCase, self).setUp()
-        os.stat_float_times(nsec_stat)
         self.default_pubs_dir = os.path.expanduser('~/.pubs')
         self.default_conf_path = os.path.expanduser('~/.pubsrc')
 
@@ -179,8 +178,8 @@ class CommandTestCase(fake_env.TestFakeFs):
 class DataCommandTestCase(CommandTestCase):
     """Abstract TestCase intializing the fake filesystem and copying fake data."""
 
-    def setUp(self, nsec_stat=True):
-        super(DataCommandTestCase, self).setUp(nsec_stat=nsec_stat)
+    def setUp(self):
+        super(DataCommandTestCase, self).setUp()
         self.fs.add_real_directory(os.path.join(self.rootpath, 'data'), read_only=False)
         self.fs.add_real_directory(os.path.join(self.rootpath, 'bibexamples'), read_only=False)
         # add certificate for web querries
@@ -562,8 +561,8 @@ class TestList(DataCommandTestCase):
                    '[turing1950computing] Turing, Alan M "Computing machinery and intelligence" Mind (1950) \n' \
                    '[Bell_1964] Bell, J. S. "On the Einstein Podolsky Rosen paradox" Physics Physique физика (1964) \n' \
                    '[Page99] Page, Lawrence et al. "The PageRank Citation Ranking: Bringing Order to the Web." (1999) \n' \
-                   '[10.1371_journal.pone.0038236] Saunders, Caroline Lyon AND Chrystopher L. Nehaniv AND Joe "Interactive Language Learning by Robots: The Transition from Babbling to Word Forms" PLoS ONE (2012) \n' \
-                   '[10.1371_journal.pone.0063400] Ay, Georg Martius AND Ralf Der AND Nihat "Information Driven Self-Organization of Complex Robotic Behaviors" PLoS ONE (2013) \n'
+                   '[10.1371_journal.pone.0038236] Lyon, Caroline and Nehaniv, Chrystopher L. and Saunders, Joe "Interactive Language Learning by Robots: The Transition from Babbling to Word Forms" PLoS ONE (2012) \n' \
+                   '[10.1371_journal.pone.0063400] Martius, Georg and Der, Ralf and Ay, Nihat "Information Driven Self-Organization of Complex Robotic Behaviors" PLoS ONE (2013) \n'
         correct = [ data_chrono_correct,
                    data_chrono_correct + '[Doe_noyear] Doe, John "About Assigning Timestamps to Research Articles" Journal Example \n'
                    ]
@@ -1176,13 +1175,26 @@ class TestUsecase(DataCommandTestCase):
                 'pubs import data/three_articles.bib',
                 'pubs add data/pagerank.bib -d data/pagerank.pdf',
                 #'pubs add -D 10.1007/s00422-012-0514-6 -d data/pagerank.pdf',
-                'pubs add -I 978-0822324669 -d data/oyama2000the.pdf',
                 'pubs add -X math/9501234 -d data/Knuth1995.pdf',
                 'pubs add -D 10.1007/s00422-012-0514-6',
                 'pubs doc add data/Loeb_2012.pdf Loeb_2012',
                ]
         self.execute_cmds(cmds, capture_output=True)
-#        self.assertEqual(correct, self.execute_cmds(cmds, capture_output=True))
+
+    @pytest.mark.skip(reason="isbn is not working anymore, see https://github.com/pubs/pubs/issues/276")
+    @mock.patch('pubs.apis.requests.get', side_effect=mock_requests.mock_requests_get)
+    def test_isbn(self, reqget):
+        """Test that the readme example work."""
+        self.fs.add_real_file(os.path.join(self.rootpath, 'data/pagerank.pdf'), target_path='data/Loeb_2012.pdf')
+        self.fs.add_real_file(os.path.join(self.rootpath, 'data/pagerank.pdf'), target_path='data/oyama2000the.pdf')
+        self.fs.add_real_file(os.path.join(self.rootpath, 'data/pagerank.pdf'), target_path='data/Knuth1995.pdf')
+
+        cmds = ['pubs init',
+                #'pubs add -D 10.1007/s00422-012-0514-6 -d data/pagerank.pdf',
+                'pubs add -I 978-0822324669 -d data/oyama2000the.pdf',
+               ]
+        self.execute_cmds(cmds, capture_output=True)
+
 
     def test_ambiguous_citekey(self):
         cmds = ['pubs init',
@@ -1211,9 +1223,8 @@ class TestCache(DataCommandTestCase):
     def setUp(self):
         pass
 
-    @ddt.data(True, False)
-    def test_remove(self, nsec_stat):
-        DataCommandTestCase.setUp(self, nsec_stat=nsec_stat)
+    def test_remove(self):
+        DataCommandTestCase.setUp(self)
         cmds = ['pubs init',
                 'pubs add data/pagerank.bib',
                 ('pubs remove Page99', ['y']),
@@ -1222,9 +1233,8 @@ class TestCache(DataCommandTestCase):
         out = self.execute_cmds(cmds)
         self.assertEqual(1, len(out[3].split('\n')))
 
-    @ddt.data(True, False)
-    def test_edit(self, nsec_stat):
-        DataCommandTestCase.setUp(self, nsec_stat=nsec_stat)
+    def test_edit(self):
+        DataCommandTestCase.setUp(self)
 
         bib = str_fixtures.bibtex_external0
         bib1 = re.sub(r'year = \{1999\}', 'year = {2007}', bib)
